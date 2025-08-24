@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiskMaps - Visualización de Riesgo de Siniestralidad</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            position: relative;
+        }
+        .auth-buttons {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .auth-buttons button {
+            background-color: #5c6bc0;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin-left: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .auth-buttons button:hover {
+            background-color: #3f51b5;
+        }
+        #map {
+            flex-grow: 1;
+            width: 100%;
+        }
+        .legend {
+            background: white;
+            padding: 10px;
+            margin: 10px;
+            border: 1px solid #999;
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            border-radius: 5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .legend-item {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+        }
+        .color-line {
+            display: inline-block;
+            width: 20px;
+            height: 4px;
+            margin-right: 10px;
+            border-top: 2px solid;
+        }
+        /* Estilos para la ventana de información */
+        .info-window {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+            font-family: 'Arial', sans-serif;
+            opacity: 0;
+            animation: fadeIn 0.3s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .info-window h3 {
+            margin-top: 0;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        .info-window p {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .info-window strong {
+            color: #34495e;
+        }
+        .info-window a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .info-window a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RiskMaps - Visualización de Riesgo de Siniestralidad</h1>
+        <div class="auth-buttons">
+            <button onclick="window.location.href='{% url 'registro' %}'" class="registro-btn">registro</button>
+            <button onclick="window.location.href='{% url 'login' %}'" class="login-btn">Login</button>
+        </div>
+    </header>
+
+    <div id="map"></div>
+
+    <script>
+        // Convertir los datos de Django a una variable JavaScript
+        const riskData = JSON.parse('{{ riskData|safe }}');
+        console.log('Datos de riesgo recibidos:', riskData);
+
+        function initMap() {
+            // Inicializar el mapa
+            const map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: {lat: 4.610, lng: -74.081}, // Centro en Bogotá
+                mapTypeControl: true,
+                streetViewControl: false,
+                fullscreenControl: true
+            });
+
+            // Crear la leyenda
+            const legend = document.createElement('div');
+            legend.className = 'legend';
+            let legendContent = `<h3 style="margin-top: 0;">Nivel de Riesgo</h3>`;
+
+            // Obtener todos los valores únicos de color y nivel de riesgo
+            const nivelesDeRiesgo = [...new Set(riskData.map(item => getRiskLevel(item.accidentes)))];
+            const colores = [...new Set(riskData.map(item => getColorByAccidents(item.accidentes)))];
+
+            // Crear un elemento de leyenda para cada color/nivel de riesgo único
+            nivelesDeRiesgo.forEach((nivel, index) => {
+                const color = colores[index]; // Asume que el orden de niveles y colores coincide
+                legendContent += `
+                    <div class="legend-item">
+                        <span class="color-line" style="background-color: ${color};"></span>
+                        <span>${nivel}</span>
+                    </div>
+                `;
+            });
+            legend.innerHTML = legendContent;
+            map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
+
+            // Crear un InfoWindow para mostrar detalles
+            const infoWindow = new google.maps.InfoWindow();
+
+            // Recorrer los datos de riesgo
+            riskData.forEach(function(risk) {
+                console.log(`Punto de Interés: ${risk.punto_interes}, Coordenadas (JSON): ${risk.coordenadas}`); // Mostrar el JSON
+
+                try {
+                    const coords = JSON.parse(risk.coordenadas); // Parsear la cadena JSON a un array
+                    console.log(`Coordenadas (Array):`, coords); // Mostrar el array parseado
+
+                    let geometry;
+
+                    if (Array.isArray(coords) && coords.length === 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+                        // Dibujar un marcador (punto)
+                        geometry = new google.maps.Marker({
+                            position: { lat: coords[0], lng: coords[1] },
+                            map: map,
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 8,
+                                fillColor: getColorByAccidents(risk.accidentes),
+                                fillOpacity: 0.8,
+                                strokeColor: getColorByAccidents(risk.accidentes),
+                                strokeWeight: 1
+                            }
+                        });
+                    } else if (Array.isArray(coords) && coords.every(coord => Array.isArray(coord) && coord.length === 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')) {
+                        // Dibujar una línea o polígono (si hay múltiples coordenadas)
+                        const path = coords.map(coord => ({ lat: coord[0], lng: coord[1] }));
+                        if (path.length === 2) {
+                            geometry = new google.maps.Polyline({ path: path, strokeColor: getColorByAccidents(risk.accidentes), strokeOpacity: 0.8, strokeWeight: 4, map: map });
+                        } else if (path.length >= 3) {
+                            geometry = new google.maps.Polygon({ paths: path, strokeColor: getColorByAccidents(risk.accidentes), strokeOpacity: 0.8, strokeWeight: 2, fillColor: getColorByAccidents(risk.accidentes), fillOpacity: 0.35, map: map });
+                        } else {
+                            console.warn(`Formato de coordenadas inesperado para ${risk.punto_interes}:`, coords);
+                        }
+                    } else {
+                        console.warn(`Formato de coordenadas inesperado para ${risk.punto_interes}:`, coords);
+                    }
+
+                    // Añadir interactividad al objeto de geometría
+                    if (geometry) {
+                        geometry.addListener('click', function(event) {
+                            const content = `
+                                <div class="info-window">
+                                    <h3>${risk.zona}</h3>
+                                    <p><strong>Accidentes:</strong> ${risk.accidentes}</p>
+                                    <p><strong>Nivel de Riesgo:</strong> ${getRiskLevel(risk.accidentes)}</p>
+                                    <p><strong>Coordenadas:</strong></p>
+                                    <ul>
+                                        ${Array.isArray(coords) ? coords.map(coord => `<li>${coord[0]}, ${coord[1]}</li>`).join('') : `<li>${coords}</li>`}
+                                    </ul>
+                                    ${risk.punto_interes ? `<p><strong>Punto de Interés Cercano:</strong> ${risk.punto_interes}</p>` : ''}
+                                </div>
+                            `;
+                            infoWindow.setContent(content);
+                            infoWindow.setPosition(Array.isArray(coords) && coords.length === 1 ? { lat: coords[0], lng: coords[1] } : event.latLng);
+                            infoWindow.open(map);
+                        });
+                    }
+
+                } catch (e) {
+                    console.error(`Error al procesar coordenadas para ${risk.punto_interes}:`, risk.coordenadas, e);
+                }
+            });
+        }
+
+        // Función para determinar el color según el número de accidentes
+        function getColorByAccidents(accidentes) {
+            if (accidentes > 10) {
+                return '#FF0000'; // Rojo para alto riesgo
+            } else if (accidentes >= 5 && accidentes <= 10) {
+                return '#FFFF00'; // Amarillo para riesgo medio
+            } else {
+                return '#00FF00'; // Verde para bajo riesgo
+            }
+        }
+
+        // Función para obtener el nivel de riesgo como texto
+        function getRiskLevel(accidentes) {
+            if (accidentes > 10) {
+                return 'Alto';
+            } else if (accidentes >= 5 && accidentes <= 10) {
+                return 'Medio';
+            } else {
+                return 'Bajo';
+            }
+        }
+    </script>
+
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAF3gXeWCL3kUb8Bh7qUDY9exaGFW-_OV0&callback=initMap"></script>      
