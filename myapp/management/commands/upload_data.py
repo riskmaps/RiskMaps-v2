@@ -20,7 +20,7 @@ class Command(BaseCommand):
         # --- FIN DE LA LIMPIEZA ---
         
         # 1. Definir la ruta a la carpeta de datos
-        data_folder = Path(settings.BASE_DIR) / 'mysite' / 'Dato_riesgos'
+        data_folder = Path(settings.BASE_DIR) / 'mysite' / 'dato_riesgos'
 
         # 2. Buscar todos los archivos CSV en esa carpeta
         csv_files = list(data_folder.glob('*.csv'))
