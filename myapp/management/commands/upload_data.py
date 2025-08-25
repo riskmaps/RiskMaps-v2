@@ -7,85 +7,90 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from myapp.models import RiesgoSiniestralidad
-import numpy as np  # Importa numpy para manejar NaN
+import numpy as np
 
 class Command(BaseCommand):
-    help = 'Carga datos desde un archivo CSV a la base de datos'
+    help = 'Carga datos desde todos los archivos CSV en la carpeta Dato_riesgos'
 
     def handle(self, *args, **kwargs):
-        # Configura la ruta al archivo CSV
+        # 1. Definir la ruta a la carpeta de datos
         data_folder = Path(settings.BASE_DIR) / 'mysite' / 'Dato_riesgos'
-        csv_file_path = data_folder / 'datos_riesgo.csv'
 
-        # Imprimir la ruta del archivo CSV
-        self.stdout.write(f"Ruta del archivo CSV: {csv_file_path}")
+        # 2. Buscar todos los archivos CSV en esa carpeta
+        csv_files = list(data_folder.glob('*.csv'))
 
-        try:
-            # Leer el archivo CSV
-            df = pd.read_csv(csv_file_path)
-            self.stdout.write(f"Archivo CSV leído correctamente. {len(df)} filas encontradas.")
-            df['accidentes'] = df['accidentes'].fillna(0)
-            # Contador para seguimiento
-            creados = 0
-            actualizados = 0
-            errores = 0
+        if not csv_files:
+            self.stdout.write(self.style.WARNING('No se encontraron archivos CSV en la carpeta.'))
+            return
 
-            # Iterar sobre las filas del DataFrame y guardar en la base de datos
-            for index, row in df.iterrows():
-                try:
-                    # Obtener el valor de la columna 'coordenadas'
-                    coord_str = row['coordenadas']
-                    print(f"Tipo de coordenadas para la fila {index}: {type(coord_str)}, Valor: {coord_str}")
-                    coordenadas = None
+        self.stdout.write(f"Se encontraron {len(csv_files)} archivos CSV para procesar.")
 
-                    # Manejar valores NaN
-                    if pd.isna(coord_str):
-                        coordenadas = []  # O None, o lo que desees para datos faltantes
-                    elif isinstance(coord_str, str):
-                        # Limpiar la cadena y convertirla
-                        cleaned_str = coord_str.strip().replace('"', '').replace("'", "")
-                        try:
-                            coordenadas = ast.literal_eval(cleaned_str)
-                        except (SyntaxError, ValueError):
+        # 3. Iterar sobre CADA archivo encontrado
+        for csv_file_path in csv_files:
+            self.stdout.write(self.style.HTTP_INFO(f"\n--- Procesando archivo: {csv_file_path.name} ---"))
+            
+            # El bloque try AHORA ESTÁ DENTRO del bucle 'for'
+            try:
+                # Leer el archivo CSV actual
+                df = pd.read_csv(csv_file_path)
+                self.stdout.write(f"Archivo leído correctamente. {len(df)} filas encontradas.")
+                
+                # Reemplazar NaN en 'accidentes' con 0
+                df['accidentes'] = df['accidentes'].fillna(0)
+                
+                # Contadores para seguimiento por archivo
+                creados = 0
+                actualizados = 0
+                errores = 0
+
+                # Iterar sobre las filas del DataFrame y guardar en la base de datos
+                for index, row in df.iterrows():
+                    try:
+                        coord_str = row['coordenadas']
+                        coordenadas = None
+
+                        if pd.isna(coord_str):
+                            coordenadas = []
+                        elif isinstance(coord_str, str):
+                            cleaned_str = coord_str.strip()
                             try:
-                                coordenadas = json.loads(cleaned_str)
-                            except (json.JSONDecodeError):
-                                self.stderr.write(self.style.ERROR(f"Error al parsear coordenadas en fila {index}: {coord_str}"))
-                                errores += 1
-                                continue # Saltar a la siguiente fila si no se puede parsear
-                    else:
-                        # Si no es str ni NaN, podría ser un tipo inesperado
-                        self.stderr.write(self.style.WARNING(f"Tipo inesperado en coordenadas fila {index}: {type(coord_str)}, Valor: {coord_str}"))
-                        errores += 1
-                        continue # Saltar a la siguiente fila
-
-                    if coordenadas is not None:
-                        # Usar update_or_create para evitar duplicados
-                        obj, created = RiesgoSiniestralidad.objects.update_or_create(
-                            zona=row['zona'],
-                            punto_interes=row['punto_interes'],
-                            defaults={
-                                'accidentes': int(row['accidentes']),
-                                'coordenadas': json.dumps(coordenadas, ensure_ascii=False)
-                            }
-                        )
-
-                        if created:
-                            creados += 1
-                            self.stdout.write(f"Creada nueva zona: {obj.zona}")
+                                coordenadas = ast.literal_eval(cleaned_str)
+                            except (SyntaxError, ValueError):
+                                try:
+                                    coordenadas = json.loads(cleaned_str)
+                                except json.JSONDecodeError:
+                                    self.stderr.write(self.style.ERROR(f"Error al parsear coordenadas en fila {index}: {coord_str}"))
+                                    errores += 1
+                                    continue
                         else:
-                            actualizados += 1
-                            self.stdout.write(f"Actualizada zona existente: {obj.zona}")
+                            self.stderr.write(self.style.WARNING(f"Tipo inesperado en coordenadas fila {index}: {type(coord_str)}"))
+                            errores += 1
+                            continue
 
-                except Exception as e:
-                    errores += 1
-                    self.stderr.write(self.style.ERROR(f"Error general al procesar fila {index}: {e}"))
+                        if coordenadas is not None:
+                            obj, created = RiesgoSiniestralidad.objects.update_or_create(
+                                zona=row['zona'],
+                                punto_interes=row['punto_interes'],
+                                defaults={
+                                    'accidentes': int(row['accidentes']),
+                                    'coordenadas': json.dumps(coordenadas, ensure_ascii=False)
+                                }
+                            )
 
-            self.stdout.write(self.style.SUCCESS(
-                f"Proceso completado: {creados} zonas creadas, {actualizados} actualizados, {errores} errores."
-            ))
+                            if created:
+                                creados += 1
+                            else:
+                                actualizados += 1
 
-        except FileNotFoundError:
-            self.stderr.write(self.style.ERROR(f"El archivo CSV no se encontró en: {csv_file_path}"))
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Ocurrió un error general durante la carga: {e}"))
+                    except Exception as e:
+                        errores += 1
+                        self.stderr.write(self.style.ERROR(f"Error al procesar fila {index}: {e}"))
+
+                self.stdout.write(self.style.SUCCESS(
+                    f"Archivo '{csv_file_path.name}' completado: {creados} creados, {actualizados} actualizados, {errores} errores."
+                ))
+
+            except FileNotFoundError:
+                self.stderr.write(self.style.ERROR(f"El archivo no se encontró en: {csv_file_path}"))
+            except Exception as e:
+                self.stderr.write(self.style.ERROR(f"Error general al cargar '{csv_file_path.name}': {e}"))
