@@ -25,8 +25,8 @@ SECRET_KEY = 'django-insecure-1jheooi9y5hkz=&@3o5f)(+1fd3o*2l00l8nv0wvwwa+$jvlq@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'Riskmapsv2.onrender.com').split(',')
-CSRF_TRUSTED_ORIGINS = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', 'https://Riskmapsv2.onrender.com').split(',')
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'RiskMaps-v2.onrender.com').split(',')
+CSRF_TRUSTED_ORIGINS = 'https://RiskMaps-v2.onrender.com').split(',')
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
