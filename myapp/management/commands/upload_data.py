@@ -10,9 +10,15 @@ from myapp.models import RiesgoSiniestralidad
 import numpy as np
 
 class Command(BaseCommand):
-    help = 'Carga datos desde todos los archivos CSV en la carpeta Dato_riesgos'
+    help = 'Limpia la tabla y carga datos desde todos los CSV en la carpeta Dato_riesgos'
 
     def handle(self, *args, **kwargs):
+        # --- LIMPIA LA BASE DE DATOS ANTES DE CARGAR ---
+        self.stdout.write(self.style.WARNING('Limpiando la base de datos de riesgos existentes...'))
+        RiesgoSiniestralidad.objects.all().delete()
+        self.stdout.write(self.style.SUCCESS('¡Base de datos limpia!'))
+        # --- FIN DE LA LIMPIEZA ---
+        
         # 1. Definir la ruta a la carpeta de datos
         data_folder = Path(settings.BASE_DIR) / 'mysite' / 'Dato_riesgos'
 
@@ -20,7 +26,7 @@ class Command(BaseCommand):
         csv_files = list(data_folder.glob('*.csv'))
 
         if not csv_files:
-            self.stdout.write(self.style.WARNING('No se encontraron archivos CSV en la carpeta.'))
+            self.stdout.write(self.style.WARNING('No se encontraron archivos CSV para cargar.'))
             return
 
         self.stdout.write(f"Se encontraron {len(csv_files)} archivos CSV para procesar.")
@@ -29,7 +35,6 @@ class Command(BaseCommand):
         for csv_file_path in csv_files:
             self.stdout.write(self.style.HTTP_INFO(f"\n--- Procesando archivo: {csv_file_path.name} ---"))
             
-            # El bloque try AHORA ESTÁ DENTRO del bucle 'for'
             try:
                 # Leer el archivo CSV actual
                 df = pd.read_csv(csv_file_path)
