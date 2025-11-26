@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-1jheooi9y5hkz=&@3o5f)(+1fd3o*2l00l8nv0wvwwa+$jvlq@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False 
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'riskmaps-v2.onrender.com,127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = ['riskmaps-v2.onrender.com', '127.0.0.1', 'localhost']
 CSRF_TRUSTED_ORIGINS = ['https://riskmaps-v2.onrender.com']
 
 INSTALLED_APPS = [
