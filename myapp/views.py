@@ -46,7 +46,13 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'myapp/login.html', {'form': form})
-
+def custom_logout_view(request):
+    """Cierra la sesión del usuario y redirige al mapa (/)."""
+    # Llama a la función de logout de Django
+    auth_logout(request)
+    
+    # Redirige a la página principal (la raíz /)
+    return redirect('/')
 
 #@login_required
 def map_view(request):
