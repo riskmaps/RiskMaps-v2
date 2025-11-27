@@ -105,14 +105,33 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1>RiskMaps - Visualización de Riesgo de Siniestralidad</h1>
-        <div class="auth-buttons">
-            <button onclick="window.location.href='{% url 'registro' %}'" class="registro-btn">registro</button>
-            <button onclick="window.location.href='{% url 'login' %}'" class="login-btn">Login</button>
-        </div>
-    </header>
-
+   <header>
+    <h1>RiskMaps - Visualización de Riesgo de Siniestralidad</h1>
+    <div class="auth-buttons">
+    {% if user.is_authenticated %}
+        <span style="color: white; margin-right: 15px; font-weight: bold; font-size: 0.9rem;">
+            Bienvenido, {{ user.username }}
+        </span>
+        
+        <form action="{% url 'logout' %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="logout-btn" style="
+                background-color: #5c6bc0; 
+                color: white; 
+                border: none; 
+                padding: 8px 15px; 
+                margin-left: 5px; 
+                border-radius: 5px; 
+                cursor: pointer; 
+                font-size: 0.9rem;
+            ">Cerrar Sesión</button>
+        </form>
+    {% else %}
+        <button onclick="window.location.href='{% url 'registro' %}'" class="registro-btn">registro</button>
+        <button onclick="window.location.href='{% url 'login' %}'" class="login-btn">Login</button>
+    {% endif %}
+    </div>
+</header>
     <div id="map"></div>
 
     <script>
