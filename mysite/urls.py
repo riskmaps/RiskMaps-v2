@@ -19,7 +19,7 @@ from django.contrib import admin
 from django.urls import path, include
 from myapp.views import map_view
 from django.contrib.auth.views import LogoutView
-from myapp import views 
+
 
 
 urlpatterns = [
