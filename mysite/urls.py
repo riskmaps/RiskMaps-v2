@@ -24,5 +24,7 @@ urlpatterns = [
     path('', map_view, name='map_root'),
     #path('', home_view, name='home'),  # Página principal
     path('', include('myapp.urls')),   # Incluye las URLs de la app
+    path('logout/', views.custom_logout_view, name='logout'),
+
     
 ]
