@@ -50,7 +50,6 @@ def login_view(request):
 
 #@login_required
 def map_view(request):
-    google_maps_api_key = settings.GOOGLE_MAPS_API_KEY
     # Lógica para obtener los datos del mapa (riskData)
     risk_data = RiesgoSiniestralidad.objects.all().values('zona', 'punto_interes','accidentes', 'coordenadas')
 
@@ -61,7 +60,7 @@ def map_view(request):
     risk_json = json.dumps(risk_list, ensure_ascii=False)
     
     context = {
-        'google_maps_api_key': google_maps_api_key,
+        'GOOGLE_MAPS_API_KEY': settings.GOOGLE_MAPS_API_KEY,
         'riskData': risk_json  # Pasamos SOLO el JSON al template
     }
 
