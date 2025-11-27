@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import path, include
 from myapp.views import map_view
 from django.contrib.auth.views import LogoutView
+from myapp import views 
 
 
 
@@ -27,7 +28,9 @@ urlpatterns = [
     path('', map_view, name='map_root'),
     #path('', home_view, name='home'),  # Página principal
     path('', include('myapp.urls')),   # Incluye las URLs de la app
-    path('logout/', views.custom_logout_view, name='logout'),
-
+    path('logout/', LogoutView.as_view(
+        template_name='logout.html', 
+        next_page='/map/login/' 
+    ), name='logout'),
     
 ]
