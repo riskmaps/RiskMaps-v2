@@ -110,7 +110,7 @@
     <div class="auth-buttons">
     {% if user.is_authenticated %}
         <span style="color: white; margin-right: 15px; font-weight: bold; font-size: 0.9rem;">
-            Bienvenido, {{ user.username }}
+            Bienvenido a RiskMaps, {{ user.username }}
         </span>
         
         <form action="{% url 'logout' %}" method="post" style="display: inline;">
